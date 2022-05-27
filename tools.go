@@ -14,15 +14,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/malfunkt/iprange"
-	"github.com/pkg/errors"
 	"github.com/tidwall/pretty"
 )
 
-const GOTOOLS_VERSION = "v0.0.1"
+const GOTOOLS_VERSION = "v0.0.2"
 
 var (
 // 一些变量 ...
@@ -176,96 +174,6 @@ func ExistStringArray(s []string, e string) bool {
 	return false
 }
 
-//时间转换 将1993-12-26 10:30:00转换为time
-func ParseTimeByTimeStr(str, errPrefix string) (time.Time, error) {
-	p := strings.TrimSpace(str)
-	if p == "" {
-		return time.Time{}, errors.Errorf("%s不能为空", errPrefix)
-	}
-
-	t, err := time.ParseInLocation("2006-01-02 15:04:05", str, time.Local)
-	if err != nil {
-		return time.Time{}, errors.Errorf("%s格式错误", errPrefix)
-	}
-
-	return t, nil
-}
-
-//获取int64 当前时间戳/输入time时间戳
-func ParseTimeToInt64(t ...time.Time) int64 {
-	if len(t) == 0 {
-		return time.Now().UnixNano() / 1e6
-	} else {
-		return t[0].UnixNano() / 1e6
-	}
-}
-
-//获取int64 秒
-func ParseSecondTimeToInt64() int64 {
-	return time.Now().Unix()
-}
-
-//获取int64 小时
-func ParseHourTimeToInt64() int64 {
-	return time.Now().Unix() / 3600 * 3600
-}
-
-//捕获异常 error
-func Catch(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-//获取最近的周一
-func ParseCurrentMonday(t time.Time) time.Time {
-	offset := int(time.Monday - t.Weekday())
-	if offset > 0 {
-		offset = -6
-	}
-	weekStart := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, offset)
-	return weekStart
-}
-
-//返回某一天的当地时区0点
-func ParseMorningTime(t time.Time) time.Time {
-	s := t.Format("19931226")
-	result, _ := time.ParseInLocation("19931226", s, time.Local)
-	return result
-}
-
-//当月第一天0点
-func ParseFirstDayOfMonthMorning(t time.Time) time.Time {
-	if t.IsZero() {
-		return t
-	}
-	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
-}
-
-//获取传入时间前一天的时间，不传默认是昨天
-func ParseYesterdayTime(t ...time.Time) time.Time {
-	if len(t) == 0 {
-		return time.Now().AddDate(0, 0, -1)
-	} else {
-		return t[0].AddDate(0, 0, -1)
-	}
-}
-
-//把int64转换成1993-12-26 10:30:00
-func ParseTimeToTimeStr(intTime int64, strfmt ...string) string {
-	t := time.Unix(intTime/1e3, 0)
-	defaultFmt := "2006-01-02 15:04:05"
-	if len(strfmt) > 0 {
-		defaultFmt = strfmt[0]
-	}
-	return t.Format(defaultFmt)
-}
-
-//int64 to time
-func Int64ConvertToTime(intTime int64) time.Time {
-	return time.Unix(intTime/1e3, 0)
-}
-
 // 是否是合法 ipv4 地址 ipv6待增加
 func IsIp(ip string) (b bool) {
 	if m, _ := regexp.MatchString("^(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)", ip); !m {
@@ -282,14 +190,6 @@ func IsIpSegment(ip string) (b bool) {
 	return true
 }
 
-//时间格式检查
-func TimeCheck(value string) (b bool) {
-	if m, _ := regexp.MatchString("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$", value); !m {
-		return false
-	}
-	return true
-}
-
 // 判断是否是一个合法域名
 func DomainCheck(domain string) bool {
 	var match bool
@@ -301,42 +201,36 @@ func DomainCheck(domain string) bool {
 }
 
 // 开头列表检查
-func String_Prefix_list(_str string, _list_str []string) (b bool) {
-	b = false
+func String_Prefix_list(_list_str []string, _str string) bool {
 	for _, v := range _list_str {
-		tmp_re := strings.HasPrefix(_str, v)
-		if tmp_re {
-			b = true
-			return
+		// fmt.Println(v, _str, strings.HasPrefix(_str, v))
+		if strings.HasPrefix(v, _str) {
+			return true
 		}
 	}
-	return
+	return false
 }
 
 // 结尾列表检查
-func String_Suffix_list(_str string, _list_str []string) (b bool) {
-	b = false
+func String_Suffix_list(_list_str []string, _str string) bool {
 	for _, v := range _list_str {
-		tmp_re := strings.HasSuffix(_str, v)
+		tmp_re := strings.HasSuffix(v, _str)
 		if tmp_re {
-			b = true
-			return
+			return true
 		}
 	}
-	return
+	return false
 }
 
 // 包含列表检查
-func String_c_list(_str string, _list_str []string) (b bool) {
-	b = false
+func String_Contains_list(_list_str []string, _str string) bool {
 	for _, v := range _list_str {
-		tmp_re := strings.Contains(_str, v)
+		tmp_re := strings.Contains(v, _str)
 		if tmp_re {
-			b = true
-			return
+			return true
 		}
 	}
-	return
+	return false
 }
 
 // interface2sting
@@ -404,7 +298,9 @@ func MD5V(str []byte) string {
 
 // ReadAll 读取所有文件内容
 func ReadAll(filePth string) ([]byte, error) {
+	// return ioutil.ReadFile(filename)
 	f, err := os.Open(filePth)
+	defer f.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -565,6 +461,7 @@ func Printf_Color(value interface{}) {
 }
 
 // ip 地址转 net.IP
+// ips = "10.0.0.1, 10.0.0.5-10, 192.168.1.*, 192.168.10.0/24"
 func GetIPList(ips string) ([]net.IP, error) {
 	addrS, err := iprange.ParseList(ips)
 	if err != nil {
@@ -572,4 +469,130 @@ func GetIPList(ips string) ([]net.IP, error) {
 	}
 	List := addrS.Expand()
 	return List, nil
+}
+
+// ip cidr 范围判断
+// cidrIp = "10.0.0.1, 10.0.0.5-10, 192.168.1.*, 192.168.10.0/24"
+func IpCidrCheck(cidrIp, Ip string) bool {
+	iplist, err := GetIPList(cidrIp)
+	if err != nil {
+		return false
+	}
+	strList := []string{}
+	for _, v := range iplist {
+		strList = append(strList, v.String())
+	}
+	// Printf_Color(strList)
+	return ExistStringArray(strList, Ip)
+}
+
+// -- 规则判断
+// sourceStr 被匹配字符串s
+// opt 匹配方式【等于、包含、前缀、后缀、cidr、正则 ...】
+// []eStr 匹配字符串s
+func MatchStr(_sourceStr string, e_str []string, _opt string, isNot bool) bool {
+	re := false
+	if isNot {
+		re = true
+	}
+	if _opt == "=" || _opt == "" {
+		for i := 0; i < len(e_str); i++ {
+			if e_str[i] == "*" || e_str[i] == _sourceStr {
+				return !re
+			}
+		}
+		return re
+	} else if _opt == "in" {
+		for i := 0; i < len(e_str); i++ {
+			if strings.Contains(_sourceStr, e_str[i]) {
+				return !re
+			}
+
+		}
+		return re
+	} else if _opt == "prefix" {
+		for i := 0; i < len(e_str); i++ {
+			if strings.HasPrefix(_sourceStr, e_str[i]) {
+				return !re
+			}
+		}
+		return re
+
+	} else if _opt == "suffix" {
+		for i := 0; i < len(e_str); i++ {
+			if strings.HasSuffix(_sourceStr, e_str[i]) {
+				return !re
+			}
+		}
+		return re
+	} else if _opt == "cidr" {
+		for i := 0; i < len(e_str); i++ {
+			if IpCidrCheck(_sourceStr, e_str[i]) {
+				return !re
+			}
+		}
+		return re
+	} else {
+		// 正则匹配
+		for i := 0; i < len(e_str); i++ {
+			match, _ := regexp.MatchString(e_str[i], _sourceStr)
+			if match {
+				return !re
+			}
+
+		}
+		return re
+	}
+}
+
+type CRule struct {
+	Opt        string   // 匹配方式
+	ReStrList  []string // 匹配字符串
+	MaLocation string   // 匹配位置
+	Des        string   // 规则描述
+	Rev        bool     // 是否取反
+	Lcon       string   // 规则连接符
+}
+
+func MapCRuleMatch(_obmap map[string]string, _crule CRule) bool {
+	return MatchStr(_obmap[_crule.MaLocation], _crule.ReStrList, _crule.Opt, _crule.Rev)
+}
+
+func orListMatch(_obmap map[string]string, _crules []CRule) bool {
+	for i := 0; i < len(_crules); i++ {
+		if MapCRuleMatch(_obmap, _crules[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+func MapCrulesListMatch(_obmap map[string]string, _crules []CRule) bool {
+	var orListCrules []CRule
+	cnt := len(_crules)
+	for i := 0; i < cnt; i++ {
+		if _crules[i].Lcon == "or" {
+			orListCrules = append(orListCrules, _crules[i])
+			if i == cnt {
+				return orListMatch(_obmap, orListCrules)
+			}
+		} else {
+			if len(orListCrules) == 0 {
+				if MapCRuleMatch(_obmap, _crules[i]) {
+					// nothing todu
+				} else {
+					return false
+				}
+			} else {
+				orListCrules = append(orListCrules, _crules[i])
+				if orListMatch(_obmap, orListCrules) {
+					// nothing todu
+				} else {
+					return false
+				}
+				orListCrules = nil
+			}
+		}
+	}
+	return true
 }
