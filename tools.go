@@ -20,7 +20,7 @@ import (
 	"github.com/tidwall/pretty"
 )
 
-const GOTOOLS_VERSION = "v0.0.2"
+const GOTOOLS_VERSION = "v0.0.3"
 
 var (
 // 一些变量 ...
@@ -510,6 +510,15 @@ func MatchStr(_sourceStr string, e_str []string, _opt string, isNot bool) bool {
 
 		}
 		return re
+	} else if _opt == "u_in" {
+		u_sourceStr := strings.ToUpper(_sourceStr)
+		for i := 0; i < len(e_str); i++ {
+			if strings.Contains(u_sourceStr, strings.ToUpper(e_str[i])) {
+				return !re
+			}
+
+		}
+		return re
 	} else if _opt == "prefix" {
 		for i := 0; i < len(e_str); i++ {
 			if strings.HasPrefix(_sourceStr, e_str[i]) {
@@ -517,10 +526,25 @@ func MatchStr(_sourceStr string, e_str []string, _opt string, isNot bool) bool {
 			}
 		}
 		return re
-
+	} else if _opt == "u_prefix" {
+		u_sourceStr := strings.ToUpper(_sourceStr)
+		for i := 0; i < len(e_str); i++ {
+			if strings.HasPrefix(u_sourceStr, strings.ToUpper(e_str[i])) {
+				return !re
+			}
+		}
+		return re
 	} else if _opt == "suffix" {
 		for i := 0; i < len(e_str); i++ {
 			if strings.HasSuffix(_sourceStr, e_str[i]) {
+				return !re
+			}
+		}
+		return re
+	} else if _opt == "u_suffix" {
+		u_sourceStr := strings.ToUpper(_sourceStr)
+		for i := 0; i < len(e_str); i++ {
+			if strings.HasSuffix(u_sourceStr, strings.ToUpper(e_str[i])) {
 				return !re
 			}
 		}
