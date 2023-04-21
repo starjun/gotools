@@ -20,7 +20,7 @@ import (
 	"github.com/tidwall/pretty"
 )
 
-const GOTOOLS_VERSION = "v0.0.3"
+const GOTOOLS_VERSION = "v0.0.4"
 
 var (
 // 一些变量 ...
@@ -554,6 +554,70 @@ func MatchStr(_sourceStr string, e_str []string, _opt string, isNot bool) bool {
 			if IpCidrCheck(_sourceStr, e_str[i]) {
 				return !re
 			}
+		}
+		return re
+	} else if _opt == ">" {
+		if len(e_str) == 0 {
+			return re
+		}
+		intSource, err := strconv.Atoi(_sourceStr)
+		if err != nil {
+			return re
+		}
+		intTarget, err := strconv.Atoi(e_str[0])
+		if err != nil {
+			return re
+		}
+		if intSource > intTarget {
+			return !re
+		}
+		return re
+	} else if _opt == ">=" {
+		if len(e_str) == 0 {
+			return re
+		}
+		intSource, err := strconv.Atoi(_sourceStr)
+		if err != nil {
+			return re
+		}
+		intTarget, err := strconv.Atoi(e_str[0])
+		if err != nil {
+			return re
+		}
+		if intSource >= intTarget {
+			return !re
+		}
+		return re
+	} else if _opt == "<" {
+		if len(e_str) == 0 {
+			return re
+		}
+		intSource, err := strconv.Atoi(_sourceStr)
+		if err != nil {
+			return re
+		}
+		intTarget, err := strconv.Atoi(e_str[0])
+		if err != nil {
+			return re
+		}
+		if intSource < intTarget {
+			return !re
+		}
+		return re
+	} else if _opt == "<=" {
+		if len(e_str) == 0 {
+			return re
+		}
+		intSource, err := strconv.Atoi(_sourceStr)
+		if err != nil {
+			return re
+		}
+		intTarget, err := strconv.Atoi(e_str[0])
+		if err != nil {
+			return re
+		}
+		if intSource <= intTarget {
+			return !re
 		}
 		return re
 	} else {
