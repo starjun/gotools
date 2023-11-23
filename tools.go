@@ -6,27 +6,37 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	uuid "github.com/satori/go.uuid"
 	"io"
 	"io/ioutil"
+	"log"
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/malfunkt/iprange"
 	"github.com/tidwall/pretty"
 )
 
-const GOTOOLS_VERSION = "v0.0.3"
+const _VERSION = "v0.0.3"
 
 var (
 // 一些变量 ...
 )
 
-//并集  合并两个数组并去重
+func init() {
+	rand.NewSource(time.Now().UnixNano()) // 产生随机种子
+}
+
+// MergeDuplicateIntArray 并集  合并两个数组并去重
 func MergeDuplicateIntArray(slice []int, elems []int) []int {
 	listPId := append(slice, elems...)
 	t := mapset.NewSet()
@@ -40,7 +50,7 @@ func MergeDuplicateIntArray(slice []int, elems []int) []int {
 	return result
 }
 
-//并集  合并两个字符串数组并去重
+// MergeDuplicateStrArray 并集  合并两个字符串数组并去重
 func MergeDuplicateStrArray(slice []string, elems []string) []string {
 	listPId := append(slice, elems...)
 	t := mapset.NewSet()
@@ -54,7 +64,7 @@ func MergeDuplicateStrArray(slice []string, elems []string) []string {
 	return result
 }
 
-// Int数组 去重
+// DuplicateIntArray Int数组 去重
 func DuplicateIntArray(m []int) []int {
 	s := make([]int, 0)
 	smap := make(map[int]int)
@@ -70,7 +80,7 @@ func DuplicateIntArray(m []int) []int {
 	return s
 }
 
-// 字符串数组 去重
+// DuplicateStrArray 字符串数组 去重
 func DuplicateStrArray(m []string) []string {
 	s := make([]string, 0)
 	smap := make(map[string]string)
@@ -86,7 +96,7 @@ func DuplicateStrArray(m []string) []string {
 	return s
 }
 
-//交集  Int数组取相同的元素
+// IntersectInt 交集  Int数组取相同的元素
 func IntersectInt(slice1, slice2 []int) []int {
 	m := make(map[int]int)
 	nn := make([]int, 0)
@@ -103,7 +113,7 @@ func IntersectInt(slice1, slice2 []int) []int {
 	return nn
 }
 
-//交集  Str数组取相同的元素
+// IntersectStr 交集  Str数组取相同的元素
 func IntersectStr(slice1, slice2 []string) []string {
 	m := make(map[string]int)
 	nn := make([]string, 0)
@@ -120,7 +130,7 @@ func IntersectStr(slice1, slice2 []string) []string {
 	return nn
 }
 
-//差集 Int数组 取出不同元素
+// GetDifferentIntArray 差集 Int数组 取出不同元素
 func GetDifferentIntArray(sourceList, sourceList2 []int) (result []int) {
 	for _, src := range sourceList {
 		var find bool
@@ -137,7 +147,7 @@ func GetDifferentIntArray(sourceList, sourceList2 []int) (result []int) {
 	return
 }
 
-//差集 Str数组 取出不同元素
+// GetDifferentStrArray 差集 Str数组 取出不同元素
 func GetDifferentStrArray(sourceList, sourceList2 []string) (result []string) {
 	for _, src := range sourceList {
 		var find bool
@@ -154,7 +164,7 @@ func GetDifferentStrArray(sourceList, sourceList2 []string) (result []string) {
 	return
 }
 
-// Int数组 存在某个数字
+// ExistIntArray Int数组 存在某个数字
 func ExistIntArray(s []int, e int) bool {
 	for _, a := range s {
 		if a == e {
@@ -164,7 +174,7 @@ func ExistIntArray(s []int, e int) bool {
 	return false
 }
 
-// Str字符串数组 存在某个字符串
+// ExistStringArray Str字符串数组 存在某个字符串
 func ExistStringArray(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {
@@ -174,33 +184,7 @@ func ExistStringArray(s []string, e string) bool {
 	return false
 }
 
-// 是否是合法 ipv4 地址 ipv6待增加
-func IsIp(ip string) (b bool) {
-	if m, _ := regexp.MatchString("^(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)", ip); !m {
-		return false
-	}
-	return true
-}
-
-//是否是ip网段格
-func IsIpSegment(ip string) (b bool) {
-	if m, _ := regexp.MatchString("^((2(5[0-5]|[0-4]\\d))|[0-1]?\\d{1,2})(\\.((2(5[0-5]|[0-4]\\d))|[0-1]?\\d{1,2})){3}/(3[0-2]|[1-2]\\d|\\d)$", ip); !m {
-		return false
-	}
-	return true
-}
-
-// 判断是否是一个合法域名
-func DomainCheck(domain string) bool {
-	var match bool
-	NotLine := "^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}"
-	//支持以http://或者https://开头并且域名中间没有/的情况
-	// NotLine := "(http(s)?:\\/\\/)?(www\\.)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(:\\d+)*(\\/\\w+\\.\\w+)*$"
-	match, _ = regexp.MatchString(NotLine, domain)
-	return match
-}
-
-// 开头列表检查
+// String_Prefix_list 开头列表检查
 func String_Prefix_list(_list_str []string, _str string) bool {
 	for _, v := range _list_str {
 		// fmt.Println(v, _str, strings.HasPrefix(_str, v))
@@ -211,7 +195,7 @@ func String_Prefix_list(_list_str []string, _str string) bool {
 	return false
 }
 
-// 结尾列表检查
+// String_Suffix_list 结尾列表检查
 func String_Suffix_list(_list_str []string, _str string) bool {
 	for _, v := range _list_str {
 		tmp_re := strings.HasSuffix(v, _str)
@@ -222,7 +206,7 @@ func String_Suffix_list(_list_str []string, _str string) bool {
 	return false
 }
 
-// 包含列表检查
+// String_Contains_list 包含列表检查
 func String_Contains_list(_list_str []string, _str string) bool {
 	for _, v := range _list_str {
 		tmp_re := strings.Contains(v, _str)
@@ -231,69 +215,6 @@ func String_Contains_list(_list_str []string, _str string) bool {
 		}
 	}
 	return false
-}
-
-// interface2sting
-func Strval(value interface{}) string {
-	var key string
-	if value == nil {
-		return key
-	}
-
-	switch value.(type) {
-	case float64:
-		ft := value.(float64)
-		key = strconv.FormatFloat(ft, 'f', -1, 64)
-	case float32:
-		ft := value.(float32)
-		key = strconv.FormatFloat(float64(ft), 'f', -1, 64)
-	case int:
-		it := value.(int)
-		key = strconv.Itoa(it)
-	case uint:
-		it := value.(uint)
-		key = strconv.Itoa(int(it))
-	case int8:
-		it := value.(int8)
-		key = strconv.Itoa(int(it))
-	case uint8:
-		it := value.(uint8)
-		key = strconv.Itoa(int(it))
-	case int16:
-		it := value.(int16)
-		key = strconv.Itoa(int(it))
-	case uint16:
-		it := value.(uint16)
-		key = strconv.Itoa(int(it))
-	case int32:
-		it := value.(int32)
-		key = strconv.Itoa(int(it))
-	case uint32:
-		it := value.(uint32)
-		key = strconv.Itoa(int(it))
-	case int64:
-		it := value.(int64)
-		key = strconv.FormatInt(it, 10)
-	case uint64:
-		it := value.(uint64)
-		key = strconv.FormatUint(it, 10)
-	case string:
-		key = value.(string)
-	case []byte:
-		key = string(value.([]byte))
-	default:
-		newValue, _ := json.Marshal(value)
-		key = string(newValue)
-	}
-
-	return key
-}
-
-// MD5 计算
-func MD5V(str []byte) string {
-	h := md5.New()
-	h.Write(str)
-	return hex.EncodeToString(h.Sum(nil))
 }
 
 // ReadAll 读取所有文件内容
@@ -307,11 +228,12 @@ func ReadAll(filePth string) ([]byte, error) {
 	return ioutil.ReadAll(f)
 }
 
-//@author: [piexlmax](https://github.com/piexlmax)
-//@function: ZipFiles
-//@description: 压缩文件
-//@param: filename string, files []string, oldform, newform string
-//@return: error
+// ZipFiles
+// @author: [piexlmax](https://github.com/piexlmax)
+// @function: ZipFiles
+// @description: 压缩文件
+// @param: filename string, files []string, oldform, newform string
+// @return: error
 func ZipFiles(filename string, files []string, oldForm, newForm string) error {
 
 	newZipFile, err := os.Create(filename)
@@ -370,11 +292,12 @@ func ZipFiles(filename string, files []string, oldForm, newForm string) error {
 	return nil
 }
 
-//@author: [songzhibin97](https://github.com/songzhibin97)
-//@function: FileMove
-//@description: 文件移动供外部调用
-//@param: src string, dst string(src: 源位置,绝对路径or相对路径, dst: 目标位置,绝对路径or相对路径,必须为文件夹)
-//@return: err error
+// FileMove
+// @author: [songzhibin97](https://github.com/songzhibin97)
+// @function: FileMove
+// @description: 文件移动供外部调用
+// @param: src string, dst string(src: 源位置,绝对路径or相对路径, dst: 目标位置,绝对路径or相对路径,必须为文件夹)
+// @return: err error
 func FileMove(src string, dst string) (err error) {
 	if dst == "" {
 		return nil
@@ -404,11 +327,12 @@ Redirect:
 	return os.Rename(src, dst)
 }
 
-//@author: [piexlmax](https://github.com/piexlmax)
-//@function: PathExists
-//@description: 文件目录是否存在
-//@param: path string
-//@return: bool, error
+// PathExists
+// @author: [piexlmax](https://github.com/piexlmax)
+// @function: PathExists
+// @description: 文件目录是否存在
+// @param: path string
+// @return: bool, error
 func PathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -450,7 +374,7 @@ func VersionOrdinal(version string) string {
 	return string(vo)
 }
 
-// 彩色打印传入 对象
+// Printf_Color 彩色打印传入 对象
 func Printf_Color(value interface{}) {
 	jjjj, err := json.Marshal(value)
 	if err != nil {
@@ -460,7 +384,7 @@ func Printf_Color(value interface{}) {
 	fmt.Printf("%s\n", pretty.Color(pretty.Pretty(jjjj), pretty.TerminalStyle))
 }
 
-// ip 地址转 net.IP
+// GetIPList ip 地址转 net.IP
 // ips = "10.0.0.1, 10.0.0.5-10, 192.168.1.*, 192.168.10.0/24"
 func GetIPList(ips string) ([]net.IP, error) {
 	addrS, err := iprange.ParseList(ips)
@@ -471,7 +395,7 @@ func GetIPList(ips string) ([]net.IP, error) {
 	return List, nil
 }
 
-// ip cidr 范围判断
+// IpCidrCheck ip cidr 范围判断
 // cidrIp = "10.0.0.1, 10.0.0.5-10, 192.168.1.*, 192.168.10.0/24"
 func IpCidrCheck(cidrIp, Ip string) bool {
 	iplist, err := GetIPList(cidrIp)
@@ -486,137 +410,381 @@ func IpCidrCheck(cidrIp, Ip string) bool {
 	return ExistStringArray(strList, Ip)
 }
 
-// -- 规则判断
-// sourceStr 被匹配字符串s
-// opt 匹配方式【等于、包含、前缀、后缀、cidr、正则 ...】
-// []eStr 匹配字符串s
-func MatchStr(_sourceStr string, e_str []string, _opt string, isNot bool) bool {
-	re := false
-	if isNot {
-		re = true
-	}
-	if _opt == "=" || _opt == "" {
-		for i := 0; i < len(e_str); i++ {
-			if e_str[i] == "*" || e_str[i] == _sourceStr {
-				return !re
-			}
-		}
-		return re
-	} else if _opt == "in" {
-		for i := 0; i < len(e_str); i++ {
-			if strings.Contains(_sourceStr, e_str[i]) {
-				return !re
-			}
-
-		}
-		return re
-	} else if _opt == "u_in" {
-		u_sourceStr := strings.ToUpper(_sourceStr)
-		for i := 0; i < len(e_str); i++ {
-			if strings.Contains(u_sourceStr, strings.ToUpper(e_str[i])) {
-				return !re
-			}
-
-		}
-		return re
-	} else if _opt == "prefix" {
-		for i := 0; i < len(e_str); i++ {
-			if strings.HasPrefix(_sourceStr, e_str[i]) {
-				return !re
-			}
-		}
-		return re
-	} else if _opt == "u_prefix" {
-		u_sourceStr := strings.ToUpper(_sourceStr)
-		for i := 0; i < len(e_str); i++ {
-			if strings.HasPrefix(u_sourceStr, strings.ToUpper(e_str[i])) {
-				return !re
-			}
-		}
-		return re
-	} else if _opt == "suffix" {
-		for i := 0; i < len(e_str); i++ {
-			if strings.HasSuffix(_sourceStr, e_str[i]) {
-				return !re
-			}
-		}
-		return re
-	} else if _opt == "u_suffix" {
-		u_sourceStr := strings.ToUpper(_sourceStr)
-		for i := 0; i < len(e_str); i++ {
-			if strings.HasSuffix(u_sourceStr, strings.ToUpper(e_str[i])) {
-				return !re
-			}
-		}
-		return re
-	} else if _opt == "cidr" {
-		for i := 0; i < len(e_str); i++ {
-			if IpCidrCheck(_sourceStr, e_str[i]) {
-				return !re
-			}
-		}
-		return re
-	} else {
-		// 正则匹配
-		for i := 0; i < len(e_str); i++ {
-			match, _ := regexp.MatchString(e_str[i], _sourceStr)
-			if match {
-				return !re
-			}
-
-		}
-		return re
-	}
+// Md5Sum md5哈希函数
+// s  字符串
+// return： MD5哈希字符串
+func Md5Sum(s string) string {
+	h := md5.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
-type CRule struct {
-	Opt        string   // 匹配方式
-	ReStrList  []string // 匹配字符串
-	MaLocation string   // 匹配位置
-	Des        string   // 规则描述
-	Rev        bool     // 是否取反
-	Lcon       string   // 规则连接符
+// GetUUID 获取uuid
+// 返回uuid字符串（36位）
+func GetUUID() string {
+	return uuid.NewV4().String()
 }
 
-func MapCRuleMatch(_obmap map[string]string, _crule CRule) bool {
-	return MatchStr(_obmap[_crule.MaLocation], _crule.ReStrList, _crule.Opt, _crule.Rev)
-}
-
-func orListMatch(_obmap map[string]string, _crules []CRule) bool {
-	for i := 0; i < len(_crules); i++ {
-		if MapCRuleMatch(_obmap, _crules[i]) {
+// StrInSlice 判断字符串是否在列表中
+// return：bool值，true - 存在 false - 不存在
+func StrInSlice(s string, slice []string) bool {
+	for _, v := range slice {
+		if v == s {
 			return true
 		}
 	}
 	return false
 }
 
-func MapCrulesListMatch(_obmap map[string]string, _crules []CRule) bool {
-	var orListCrules []CRule
-	cnt := len(_crules)
-	for i := 0; i < cnt; i++ {
-		if _crules[i].Lcon == "or" {
-			orListCrules = append(orListCrules, _crules[i])
-			if i == cnt {
-				return orListMatch(_obmap, orListCrules)
+// IntInSlice 判断整型是否在列表中
+// return：bool值，true - 存在 false - 不存在
+func IntInSlice(i int, slice []int) bool {
+	for _, v := range slice {
+		if v == i {
+			return true
+		}
+	}
+	return false
+}
+
+// Strval 任意类型转字符串
+// 入参：interface{}
+// return：字符串
+func Strval(value interface{}) string {
+	var key string
+	if value == nil {
+		return key
+	}
+
+	switch value.(type) {
+	case float64:
+		ft := value.(float64)
+		key = strconv.FormatFloat(ft, 'f', -1, 64)
+	case float32:
+		ft := value.(float32)
+		key = strconv.FormatFloat(float64(ft), 'f', -1, 64)
+	case int:
+		it := value.(int)
+		key = strconv.Itoa(it)
+	case uint:
+		it := value.(uint)
+		key = strconv.Itoa(int(it))
+	case int8:
+		it := value.(int8)
+		key = strconv.Itoa(int(it))
+	case uint8:
+		it := value.(uint8)
+		key = strconv.Itoa(int(it))
+	case int16:
+		it := value.(int16)
+		key = strconv.Itoa(int(it))
+	case uint16:
+		it := value.(uint16)
+		key = strconv.Itoa(int(it))
+	case int32:
+		it := value.(int32)
+		key = strconv.Itoa(int(it))
+	case uint32:
+		it := value.(uint32)
+		key = strconv.Itoa(int(it))
+	case int64:
+		it := value.(int64)
+		key = strconv.FormatInt(it, 10)
+	case uint64:
+		it := value.(uint64)
+		key = strconv.FormatUint(it, 10)
+	case string:
+		key = value.(string)
+	case []byte:
+		key = string(value.([]byte))
+	default:
+		newValue, _ := json.Marshal(value)
+		key = string(newValue)
+	}
+
+	return key
+}
+
+// IsIp 是否是合法 ipv4 地址 ipv6待增加
+func IsIp(ip string) (b bool) {
+	if m, _ := regexp.MatchString("^(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|[0-1]\\d{2}|[1-9]?\\d)", ip); !m {
+		return false
+	}
+	return true
+}
+
+// IsIpSegment 是否是ip网段格
+func IsIpSegment(ip string) (b bool) {
+	if m, _ := regexp.MatchString("^((2(5[0-5]|[0-4]\\d))|[0-1]?\\d{1,2})(\\.((2(5[0-5]|[0-4]\\d))|[0-1]?\\d{1,2})){3}/(3[0-2]|[1-2]\\d|\\d)$", ip); !m {
+		return false
+	}
+	return true
+}
+
+// DomainCheck 判断是否是一个合法域名
+func DomainCheck(domain string) bool {
+	var match bool
+	NotLine := "^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}"
+	//支持以http://或者https://开头并且域名中间没有/的情况
+	// NotLine := "(http(s)?:\\/\\/)?(www\\.)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(:\\d+)*(\\/\\w+\\.\\w+)*$"
+	match, _ = regexp.MatchString(NotLine, domain)
+	return match
+}
+
+func CheckDomain(domain string) bool {
+	var match bool
+	// 支持以http://或者https://开头并且域名中间没有/的情况
+	// NotLine := "^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,6}"
+	NotLine := "(http(s)?:\\/\\/)?(www\\.)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(:\\d+)*(\\/\\w+\\.\\w+)*$"
+	match, _ = regexp.MatchString(NotLine, domain)
+	return match
+}
+
+// GetIpList str ips [192.168.1.1/24,10.1.1.1-200] 转 net.IP
+func GetIpList(ips string) ([]net.IP, error) {
+	addressList, err := iprange.ParseList(ips)
+	if err != nil {
+		return nil, err
+	}
+	list := addressList.Expand()
+
+	return list, err
+}
+
+func GetPorts(selection string) ([]int, error) {
+	var ports []int
+	if selection == "" {
+		return ports, nil
+	}
+
+	ranges := strings.Split(selection, ",")
+	for _, r := range ranges {
+		r = strings.TrimSpace(r)
+		if strings.Contains(r, "-") {
+			parts := strings.Split(r, "-")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("Invalid port selection segment: '%s'", r)
 			}
+
+			p1, err := strconv.Atoi(parts[0])
+			if err != nil {
+				return nil, fmt.Errorf("Invalid port number: '%s'", parts[0])
+			}
+
+			p2, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return nil, fmt.Errorf("Invalid port number: '%s'", parts[1])
+			}
+
+			if p1 > p2 {
+				return nil, fmt.Errorf("Invalid port range: %d-%d", p1, p2)
+			}
+
+			for i := p1; i <= p2; i++ {
+				ports = append(ports, i)
+			}
+
 		} else {
-			if len(orListCrules) == 0 {
-				if MapCRuleMatch(_obmap, _crules[i]) {
-					// nothing todu
-				} else {
-					return false
-				}
+			if port, err := strconv.Atoi(r); err != nil {
+				return nil, fmt.Errorf("Invalid port number: '%s'", r)
 			} else {
-				orListCrules = append(orListCrules, _crules[i])
-				if orListMatch(_obmap, orListCrules) {
-					// nothing todu
-				} else {
-					return false
-				}
-				orListCrules = nil
+				ports = append(ports, port)
 			}
 		}
 	}
-	return true
+	return ports, nil
+}
+
+// StructDiffValue 比较两个结构体
+func StructDiffValue(old, new interface{}, excludeFields ...string) map[string]interface{} {
+	if reflect.TypeOf(old).Kind() != reflect.Struct || reflect.TypeOf(new).Kind() != reflect.Struct {
+		log.Println(reflect.TypeOf(old).Kind(), reflect.TypeOf(new).Kind())
+		return nil
+	}
+
+	oldVal := reflect.ValueOf(old)
+	newVal := reflect.ValueOf(new)
+	oldType := reflect.TypeOf(old)
+
+	result := make(map[string]interface{})
+
+	for i := 0; i < oldVal.NumField(); i++ {
+
+		fieldName := oldType.Field(i).Name
+		if StrInSlice(fieldName, excludeFields) {
+			continue
+		}
+
+		switch oldVal.Field(i).Kind() {
+		case reflect.String:
+			if oldVal.Field(i).String() != newVal.Field(i).String() {
+				result[fieldName] = map[string]interface{}{
+					"old": oldVal.Field(i).String(),
+					"new": newVal.Field(i).String(),
+				}
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			if oldVal.Field(i).Int() != newVal.Field(i).Int() {
+				result[fieldName] = map[string]interface{}{
+					"old": oldVal.Field(i).Int(),
+					"new": newVal.Field(i).Int(),
+				}
+			}
+		case reflect.Float64, reflect.Float32:
+			if oldVal.Field(i).Float() != newVal.Field(i).Float() {
+				result[fieldName] = map[string]interface{}{
+					"old": oldVal.Field(i).Float(),
+					"new": newVal.Field(i).Float(),
+				}
+			}
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			if oldVal.Field(i).Uint() != newVal.Field(i).Uint() {
+				result[fieldName] = map[string]interface{}{
+					"old": oldVal.Field(i).Uint(),
+					"new": newVal.Field(i).Uint(),
+				}
+			}
+		case reflect.Bool:
+			if oldVal.Field(i).Bool() != newVal.Field(i).Bool() {
+				result[fieldName] = map[string]interface{}{
+					"old": oldVal.Field(i).Bool(),
+					"new": newVal.Field(i).Bool(),
+				}
+			}
+		default:
+			//TODO
+		}
+	}
+
+	return result
+}
+
+// GetFileLine 获取文件名和行号
+func GetFileLine(v ...int) (string, int) {
+	skip := 1
+	if len(v) == 1 {
+		skip = v[0]
+	}
+	_, file, line, _ := runtime.Caller(skip)
+
+	return file, line
+}
+
+// CreateDateDir 创建目录
+func CreateDateDir(Path, dateFolderName string) string {
+	folderPath := filepath.Join(Path, dateFolderName)
+	if _, err := os.Stat(folderPath); os.IsNotExist(err) {
+		os.MkdirAll(folderPath, os.ModePerm)
+	}
+	return folderPath
+}
+
+// FloatFormat 格式化浮点数
+// f  浮点数
+// v  保留小数位数
+func FloatFormat(f float64, v ...int) float64 {
+	n := 2
+	if len(v) > 0 {
+		n = v[0]
+	}
+	fmtStr := strings.ReplaceAll(`%.{{num}}f`, "{{num}}", strconv.Itoa(n))
+	fmt.Println("fmtStr = ", fmtStr)
+	r, err := strconv.ParseFloat(fmt.Sprintf(fmtStr, f), 64)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return r
+}
+
+func Random(min, max int) int {
+	return rand.Intn(max-min) + min
+}
+
+// CheckPort 检验输入字符串端口
+func CheckPort(portStr string) error {
+	portStr = strings.TrimSpace(portStr)
+	if portStr == "" {
+		return fmt.Errorf("The port cannot be empty")
+	}
+	ranges := strings.Split(portStr, ",")
+	maxPort := 65535
+	for _, r := range ranges {
+		r = strings.TrimSpace(r)
+		if strings.Contains(r, "-") {
+			parts := strings.Split(r, "-")
+			if len(parts) != 2 {
+				return fmt.Errorf("Invalid port selection segment: '%s'", r)
+			}
+			port1, err := strconv.Atoi(parts[0])
+			if err != nil {
+				return fmt.Errorf("Invalid port number: '%s'", parts[0])
+			}
+			port2, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return fmt.Errorf("Invalid port number: '%s'", parts[1])
+			}
+			if port1 > port2 {
+				return fmt.Errorf("Invalid port range: %d-%d", port1, port2)
+			}
+			if port2 > maxPort {
+				return fmt.Errorf("Invalid port range: %d-%d", maxPort, port2)
+			}
+			continue
+		}
+		port, err := strconv.Atoi(r)
+		if err != nil {
+			return fmt.Errorf("Invalid port number: '%s'", r)
+		}
+		if port > maxPort {
+			return fmt.Errorf("Invalid port range: %d-%d", maxPort, port)
+		}
+	}
+	return nil
+}
+
+// PrintColor 优雅打印对象
+func PrintColor(value interface{}) {
+	j, err := json.Marshal(value)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%s\n", pretty.Color(pretty.Pretty(j), pretty.TerminalStyle))
+}
+
+// StringPrefixList 开头列表检查
+func StringPrefixList(str string, listStr []string) (b bool) {
+	b = false
+	for _, v := range listStr {
+		tmpRe := strings.HasPrefix(str, v)
+		if tmpRe {
+			b = true
+			return
+		}
+	}
+	return
+}
+
+// StringSuffixList 结尾列表检查
+func StringSuffixList(str string, listStr []string) (b bool) {
+	b = false
+	for _, v := range listStr {
+		tmpRe := strings.HasSuffix(str, v)
+		if tmpRe {
+			b = true
+
+			return
+		}
+	}
+
+	return
+}
+
+func GetDigit(s string) string {
+	reg, _ := regexp.Compile(`[0-9.]+`)
+	ret := string(reg.Find([]byte(s)))
+	if strings.TrimSpace(ret) == "" {
+		ret = "0"
+	}
+	return ret
 }
