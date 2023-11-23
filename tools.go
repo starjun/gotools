@@ -455,7 +455,6 @@ func Strval(value interface{}) string {
 	if value == nil {
 		return key
 	}
-
 	switch value.(type) {
 	case float64:
 		ft := value.(float64)
