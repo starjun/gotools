@@ -77,8 +77,8 @@ Temporary Items
 ### Custom ###
 
 # Editors
-.idea
-.vscode
+.idea/
+.vscode/
 
 # Output files
 _output
