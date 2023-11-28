@@ -1,4 +1,4 @@
-module github.com/starjun/gotools
+module github.com/starjun/gotools/v2
 
 go 1.19
 
